@@ -8,105 +8,128 @@ import streamlit as st
 
 st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="🍺", layout="wide")
 
-# キリン一番搾り（KIRIN ICHIBAN）イメージのレトロポップ＆キュートCSS
+# スタイリッシュ＆ラグジュアリーな Kirin Ichiban テーマの背景デザイン CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Zen+Maru+Gothic:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
 
+    /* 琥珀（アンバー）と黄金のグラデーション＆バックグラウンドデザイン */
     .stApp {
-        background: linear-gradient(135deg, #FBF8EE 0%, #F5E8C7 50%, #E6C875 100%);
+        background: 
+            radial-gradient(circle at 85% 15%, rgba(229, 193, 88, 0.18) 0%, transparent 45%),
+            radial-gradient(circle at 15% 85%, rgba(184, 134, 11, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(139, 0, 0, 0.08) 0%, transparent 65%),
+            linear-gradient(135deg, #0D0A07 0%, #1A120B 35%, #2D1E0E 70%, #110B05 100%);
+        background-attachment: fixed;
     }
     
+    /* カードコンテナデザイン */
     .main-card {
-        background-color: #FFFDF5;
-        border: 4px double #D4AF37;
-        border-radius: 28px;
-        padding: 45px 35px;
-        box-shadow: 0 15px 35px rgba(180, 140, 40, 0.25);
-        color: #222222;
+        background: rgba(255, 253, 248, 0.97);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(212, 175, 55, 0.6);
+        outline: 4px double rgba(212, 175, 55, 0.4);
+        outline-offset: -8px;
+        border-radius: 24px;
+        padding: 50px 40px;
+        box-shadow: 
+            0 30px 60px rgba(0, 0, 0, 0.7),
+            0 0 40px rgba(212, 175, 55, 0.15);
+        color: #1A1A1A;
         text-align: center;
-        max-width: 620px;
-        margin: 10px auto 30px auto;
+        max-width: 640px;
+        margin: 20px auto 30px auto;
         position: relative;
     }
 
+    /* ビールの一滴（ゴールドドロップ）アイコン */
     .beer-drop {
-        font-size: 38px;
-        margin-bottom: 5px;
+        font-size: 42px;
+        margin-bottom: 8px;
         display: inline-block;
-        filter: drop-shadow(0 4px 6px rgba(212, 175, 55, 0.4));
+        filter: drop-shadow(0 6px 12px rgba(212, 175, 55, 0.5));
     }
 
+    /* 弧状のスタイルテキスト */
     .curved-banner {
         font-family: 'Cinzel', serif;
-        color: #C59217;
-        font-size: 13px;
+        color: #B8860B;
+        font-size: 12px;
         font-weight: 900;
-        letter-spacing: 3px;
+        letter-spacing: 4px;
         text-transform: uppercase;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
     }
 
+    /* タイトル */
     h1.kirin-title {
-        font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic Pro', sans-serif;
+        font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
         color: #1A1A1A;
-        font-size: 32px;
+        font-size: 34px;
         font-weight: 900;
-        margin: 5px 0 15px 0;
+        margin: 8px 0 16px 0;
         letter-spacing: -0.5px;
-        background: linear-gradient(180deg, #222 0%, #444 100%);
+        background: linear-gradient(180deg, #111111 0%, #333333 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 
+    /* 一番搾り黄金バッジ */
     .badge-gold {
-        background: linear-gradient(90deg, #E5C158 0%, #D4AF37 50%, #B89028 100%);
+        background: linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #A6801A 100%);
         color: #FFFFFF;
-        padding: 6px 20px;
+        padding: 7px 22px;
         border-radius: 30px;
         font-size: 11px;
         font-weight: 800;
-        letter-spacing: 2px;
+        letter-spacing: 2.5px;
         text-transform: uppercase;
-        box-shadow: 0 3px 8px rgba(180, 140, 40, 0.3);
+        box-shadow: 0 4px 12px rgba(180, 140, 40, 0.35);
         display: inline-block;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
 
     p.sub-desc {
-        color: #7A6843;
-        font-size: 13px;
+        color: #665533;
+        font-size: 13.5px;
         font-weight: 700;
-        line-height: 1.6;
+        line-height: 1.65;
         margin-bottom: 0;
     }
 
+    /* スタイリッシュボタン */
     .stButton > button {
-        background: linear-gradient(180deg, #D4AF37 0%, #B8860B 100%) !important;
+        background: linear-gradient(135deg, #D4AF37 0%, #B8860B 50%, #966F09 100%) !important;
         color: #FFFFFF !important;
-        border: 2px solid #FFF8DC !important;
-        padding: 15px 32px !important;
+        border: 1px solid #FFE4B5 !important;
+        padding: 16px 36px !important;
         border-radius: 50px !important;
-        font-family: 'Zen Maru Gothic', sans-serif !important;
+        font-family: 'Zen Kaku Gothic New', sans-serif !important;
         font-size: 17px !important;
         font-weight: 900 !important;
-        letter-spacing: 1px !important;
-        box-shadow: 0 8px 20px rgba(184, 134, 11, 0.4) !important;
-        transition: all 0.25s ease !important;
+        letter-spacing: 1.5px !important;
+        box-shadow: 0 10px 25px rgba(184, 134, 11, 0.45) !important;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         width: 100% !important;
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px) scale(1.01) !important;
-        box-shadow: 0 12px 25px rgba(184, 134, 11, 0.5) !important;
-        background: linear-gradient(180deg, #E5C158 0%, #C59217 100%) !important;
+        transform: translateY(-3px) scale(1.01) !important;
+        box-shadow: 0 15px 30px rgba(184, 134, 11, 0.6) !important;
+        background: linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #B8860B 100%) !important;
     }
 
     div[data-testid="stFileUploader"] {
-        background: #FFFDF8;
-        border: 2px dashed #E5C158;
+        background: rgba(255, 253, 248, 0.8);
+        border: 2px dashed rgba(212, 175, 55, 0.6);
         border-radius: 20px;
-        padding: 10px;
+        padding: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    div[data-testid="stFileUploader"]:hover {
+        border-color: #D4AF37;
+        background: rgba(255, 253, 248, 1);
     }
 </style>
 """, unsafe_allow_html=True)
