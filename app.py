@@ -45,7 +45,8 @@ st.markdown("""
 
 st.markdown('<div class="main-card"><span class="badge">Professional Tool</span><h1>エクセルリスト生成</h1><p style="color: #665555; font-size: 13px;">ファイルをアップロードするだけで、自動デザイン整形・文字装飾ルール適用・Scope別タブ分割を行います。</p></div>', unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("", type=["xlsx", "csv"])
+# .xlsx, .xls, .csv 全フォーマットを許可
+uploaded_file = st.file_uploader("", type=["xlsx", "xls", "csv"])
 
 def clean_str(val):
     if pd.isna(val) or val is None:
@@ -56,12 +57,17 @@ def clean_str(val):
     return s
 
 def inspect_and_parse(file_bytes, file_name):
-    # CSV / Excel の堅牢な読み込み
-    if file_name.endswith('.csv'):
+    # CSV / XLS / XLSX の柔軟読み込み対応
+    if file_name.lower().endswith('.csv'):
         try:
             df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None, dtype=str)
         except Exception:
             df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None, encoding='cp932', dtype=str)
+    elif file_name.lower().endswith('.xls'):
+        try:
+            df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str, engine='xlrd')
+        except Exception:
+            df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str)
     else:
         df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str)
 
@@ -77,34 +83,24 @@ def inspect_and_parse(file_bytes, file_name):
             if not text:
                 continue
 
-            # Scope / Category / Expert Type
             if any(k in text for k in ["expert type", "scope", "part", "category", "タイプ", "スコープ"]):
                 if "Scope" not in temp_map: temp_map["Scope"] = c
-            # Number / ID
             elif any(k in text for k in ["number", "no", "no.", "id", "番号", "エキスパート番号"]):
                 if "Number" not in temp_map: temp_map["Number"] = c
-            # Name
             elif any(k in text for k in ["name", "expert name", "名前", "氏名", "エキスパート名"]) and "file" not in text:
                 if "Name" not in temp_map: temp_map["Name"] = c
-            # Relevant Titles
             elif any(k in text for k in ["title", "titles", "役職", "タイトル", "要職"]):
                 if "Relevant Titles" not in temp_map: temp_map["Relevant Titles"] = c
-            # Relevant Experience
             elif any(k in text for k in ["experience", "screening", "経歴要約", "要約", "スクリーニング"]):
                 if "Relevant experience" not in temp_map: temp_map["Relevant experience"] = c
-            # Hourly Rate
             elif any(k in text for k in ["rate", "hourly", "fee", "price", "cost", "単価", "時給", "料金"]):
                 if "Hourly Rate" not in temp_map: temp_map["Hourly Rate"] = c
-            # Employment History
             elif any(k in text for k in ["employment", "history", "career", "経歴", "職歴", "職務経歴"]):
                 if "Employment History" not in temp_map: temp_map["Employment History"] = c
-            # Location
             elif any(k in text for k in ["location", "country", "city", "place", "所在地", "国", "場所"]):
                 if "Location" not in temp_map: temp_map["Location"] = c
-            # Status
             elif "status" in text or "ステータス" in text:
                 if "Status" not in temp_map: temp_map["Status"] = c
-            # Identity Verification Status
             elif any(k in text for k in ["identity", "verification", "id verification", "本人確認"]):
                 if "Identity Verification Status" not in temp_map: temp_map["Identity Verification Status"] = c
 
@@ -227,7 +223,6 @@ def process_excel(file):
         formatted_data_list.append(entry)
         scope_groups.setdefault(item["scope"], []).append(entry)
 
-    # openpyxl によるExcel構築
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
