@@ -98,7 +98,7 @@ st.markdown("""
     }
     
     div[data-testid="stFileUploader"]:hover {
-        border-color: #D4AF37;
+        border-color: #355E3B;
         background: rgba(255, 253, 248, 1);
     }
 </style>
