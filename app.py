@@ -8,7 +8,7 @@ import streamlit as st
 
 st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="📄", layout="wide")
 
-# 指定のカラーコード（背景: #355E3B, ボックス: #FBFDE4, 文字: #895129）を適用したCSS
+# 指定のカラーコード（背景: #355E3B, ボックス: #F5EFD6, 文字: #895129）を適用したCSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
@@ -19,9 +19,9 @@ st.markdown("""
         background-image: none !important;
     }
     
-    /* メインカード: #FBFDE4 */
+    /* メインカード: #F5EFD6 */
     .main-card {
-        background-color: #FBFDE4 !important;
+        background-color: #F5EFD6 !important;
         border: 2px solid #895129 !important;
         border-radius: 24px;
         padding: 48px 40px;
@@ -33,10 +33,10 @@ st.markdown("""
         position: relative;
     }
 
-    /* バッジ: #895129 背景 / #FBFDE4 文字 */
+    /* バッジ: #895129 背景 / #F5EFD6 文字 */
     .badge-theme {
         background-color: #895129 !important;
-        color: #FBFDE4 !important;
+        color: #F5EFD6 !important;
         padding: 7px 22px;
         border-radius: 30px;
         font-size: 11px;
@@ -70,7 +70,7 @@ st.markdown("""
     /* ボタン: #895129 背景 */
     .stButton > button {
         background-color: #895129 !important;
-        color: #FBFDE4 !important;
+        color: #F5EFD6 !important;
         border: none !important;
         padding: 16px 36px !important;
         border-radius: 50px !important;
@@ -88,9 +88,9 @@ st.markdown("""
         background-color: #704020 !important;
     }
 
-    /* ファイルアップローダー: #FBFDE4 ボックス化 */
+    /* ファイルアップローダー: #F5EFD6 ボックス化 */
     div[data-testid="stFileUploader"] {
-        background-color: #FBFDE4 !important;
+        background-color: #F5EFD6 !important;
         border: 2px dashed #895129 !important;
         border-radius: 20px;
         padding: 12px;
