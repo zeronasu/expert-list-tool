@@ -55,6 +55,11 @@ def clean_str(val):
         return ""
     return s
 
+def sanitize_sheet_name(name):
+    # Excelシート名禁止文字 [: \ / ? * [ ]] を自動でハイフンに変換し31文字内に短縮
+    clean = re.sub(r'[:\\/*?\[\]]', '-', str(name)).strip()
+    return clean[:30] if clean else "Scope"
+
 def inspect_and_parse(file_bytes, file_name):
     if file_name.lower().endswith('.csv'):
         try:
@@ -69,7 +74,6 @@ def inspect_and_parse(file_bytes, file_name):
     else:
         df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str)
 
-    # 1. ヘッダー行の自動判定
     header_row_idx = -1
     col_map = {}
 
@@ -134,7 +138,6 @@ def inspect_and_parse(file_bytes, file_name):
         status = get_field("Status")
         id_ver = get_field("Identity Verification Status")
 
-        # E列から Number 取得し、数値型へ変換（緑色の三角警告「文字列として保存された数値」を防止）
         raw_num = clean_str(row[number_col_idx]) if number_col_idx < len(row) else ""
         if "thirdbridge" in raw_num.lower():
             raw_num = ""
@@ -290,7 +293,6 @@ def process_excel(file):
                     cell.alignment = Alignment(horizontal="center", vertical="top")
                 elif col_name in ["Number", "Location", "ID Verification"]:
                     cell.alignment = Alignment(horizontal="center", vertical="top")
-                    # 小数表記（1.1, 1.2等）の見た目をきれいに維持
                     if col_name == "Number" and isinstance(val, float):
                         cell.number_format = '0.0'
 
@@ -303,11 +305,19 @@ def process_excel(file):
     build_sheet(ws_all, title_val, formatted_data_list)
 
     # 2. Scope別シート
+    existing_titles = set(["全員一覧"])
     for scope_name, items in scope_groups.items():
-        clean_name = re.sub(r'[\\View/*?\[\]]', '', scope_name)[:30]
-        if clean_name:
-            ws_scope = wb.create_sheet(title=clean_name)
-            build_sheet(ws_scope, f"{title_val} ({scope_name})", items)
+        clean_name = sanitize_sheet_name(scope_name)
+        
+        base_name = clean_name
+        counter = 1
+        while clean_name in existing_titles:
+            clean_name = f"{base_name[:25]}_{counter}"
+            counter += 1
+            
+        existing_titles.add(clean_name)
+        ws_scope = wb.create_sheet(title=clean_name)
+        build_sheet(ws_scope, f"{title_val} ({scope_name})", items)
 
     output = io.BytesIO()
     wb.save(output)
