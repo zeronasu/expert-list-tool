@@ -108,8 +108,7 @@ def inspect_and_parse(file_bytes, file_name):
     if header_row_idx == -1:
         header_row_idx = 0
 
-    # 元ファイルのE列（0インデックスの4）を固定でNumber抽出元に指定
-    number_col_idx = 4
+    number_col_idx = 4 # E列 (index 4)
 
     has_id = "Identity Verification Status" in col_map
 
@@ -135,15 +134,25 @@ def inspect_and_parse(file_bytes, file_name):
         status = get_field("Status")
         id_ver = get_field("Identity Verification Status")
 
-        # 元ファイルのE列 (index 4) から直接 Number (1.1, 1.2 など) を取得
-        number = clean_str(row[number_col_idx]) if number_col_idx < len(row) else ""
-        if "thirdbridge" in number.lower():
-            number = ""
+        # E列から Number 取得し、数値型へ変換（緑色の三角警告「文字列として保存された数値」を防止）
+        raw_num = clean_str(row[number_col_idx]) if number_col_idx < len(row) else ""
+        if "thirdbridge" in raw_num.lower():
+            raw_num = ""
 
-        if not any([name, scope, number, titles, exp, rate_raw, emp, loc]):
+        number_val = raw_num
+        if raw_num:
+            try:
+                if "." in raw_num:
+                    number_val = float(raw_num)
+                else:
+                    number_val = int(raw_num)
+            except ValueError:
+                number_val = raw_num
+
+        if not any([name, scope, raw_num, titles, exp, rate_raw, emp, loc]):
             continue
 
-        if parsed_rows and not name and not scope and not rate_raw and not number:
+        if parsed_rows and not name and not scope and not rate_raw and not raw_num:
             prev = parsed_rows[-1]
             if exp:
                 prev["exp"] = (prev["exp"] + "\n" + exp).strip()
@@ -178,7 +187,7 @@ def inspect_and_parse(file_bytes, file_name):
 
         parsed_rows.append({
             "scope": scope,
-            "number": number,
+            "number": number_val,
             "name": name,
             "titles": titles,
             "exp": exp,
@@ -281,6 +290,9 @@ def process_excel(file):
                     cell.alignment = Alignment(horizontal="center", vertical="top")
                 elif col_name in ["Number", "Location", "ID Verification"]:
                     cell.alignment = Alignment(horizontal="center", vertical="top")
+                    # 小数表記（1.1, 1.2等）の見た目をきれいに維持
+                    if col_name == "Number" and isinstance(val, float):
+                        cell.number_format = '0.0'
 
         col_widths = [22, 10, 16, 38, 60, 14, 55, 10, 14]
         for c_i, w in enumerate(col_widths[:len(headers)], 1):
