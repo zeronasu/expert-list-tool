@@ -8,60 +8,118 @@ import streamlit as st
 
 st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="🍺", layout="wide")
 
-# Kirin Beer テーマのカスタムCSS
+# キリン一番搾り（KIRIN ICHIBAN）イメージのレトロポップ＆キュートCSS
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Zen+Maru+Gothic:wght@700;900&display=swap');
+
     .stApp {
-        background: linear-gradient(135deg, #1C1917 0%, #2A1D0E 40%, #4A0E0E 100%);
+        background: linear-gradient(135deg, #FBF8EE 0%, #F5E8C7 50%, #E6C875 100%);
     }
+    
     .main-card {
-        background: rgba(255, 255, 255, 0.97);
-        border-radius: 20px;
-        padding: 45px;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
-        color: #1A1A1A;
+        background-color: #FFFDF5;
+        border: 4px double #D4AF37;
+        border-radius: 28px;
+        padding: 45px 35px;
+        box-shadow: 0 15px 35px rgba(180, 140, 40, 0.25);
+        color: #222222;
         text-align: center;
-        max-width: 650px;
-        margin: 0 auto 30px auto;
-        border: 2px solid #D4AF37;
+        max-width: 620px;
+        margin: 10px auto 30px auto;
+        position: relative;
     }
-    .badge {
-        background: linear-gradient(90deg, #D4AF37 0%, #AA7C11 100%);
+
+    .beer-drop {
+        font-size: 38px;
+        margin-bottom: 5px;
+        display: inline-block;
+        filter: drop-shadow(0 4px 6px rgba(212, 175, 55, 0.4));
+    }
+
+    .curved-banner {
+        font-family: 'Cinzel', serif;
+        color: #C59217;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    h1.kirin-title {
+        font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic Pro', sans-serif;
+        color: #1A1A1A;
+        font-size: 32px;
+        font-weight: 900;
+        margin: 5px 0 15px 0;
+        letter-spacing: -0.5px;
+        background: linear-gradient(180deg, #222 0%, #444 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .badge-gold {
+        background: linear-gradient(90deg, #E5C158 0%, #D4AF37 50%, #B89028 100%);
         color: #FFFFFF;
-        padding: 6px 18px;
-        border-radius: 20px;
+        padding: 6px 20px;
+        border-radius: 30px;
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 2px;
         text-transform: uppercase;
-        box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3);
+        box-shadow: 0 3px 8px rgba(180, 140, 40, 0.3);
+        display: inline-block;
+        margin-bottom: 12px;
     }
-    h1 {
-        color: #8B0000;
-        font-size: 30px;
-        font-weight: 900;
-        margin-top: 18px;
-        letter-spacing: -0.5px;
+
+    p.sub-desc {
+        color: #7A6843;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.6;
+        margin-bottom: 0;
     }
+
     .stButton > button {
-        background: linear-gradient(90deg, #8B0000 0%, #B22222 100%) !important;
+        background: linear-gradient(180deg, #D4AF37 0%, #B8860B 100%) !important;
         color: #FFFFFF !important;
-        border: none !important;
-        padding: 14px 28px !important;
-        border-radius: 12px !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
-        box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4) !important;
+        border: 2px solid #FFF8DC !important;
+        padding: 15px 32px !important;
+        border-radius: 50px !important;
+        font-family: 'Zen Maru Gothic', sans-serif !important;
+        font-size: 17px !important;
+        font-weight: 900 !important;
+        letter-spacing: 1px !important;
+        box-shadow: 0 8px 20px rgba(184, 134, 11, 0.4) !important;
         transition: all 0.25s ease !important;
+        width: 100% !important;
     }
+
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 10px 25px rgba(139, 0, 0, 0.6) !important;
+        transform: translateY(-2px) scale(1.01) !important;
+        box-shadow: 0 12px 25px rgba(184, 134, 11, 0.5) !important;
+        background: linear-gradient(180deg, #E5C158 0%, #C59217 100%) !important;
+    }
+
+    div[data-testid="stFileUploader"] {
+        background: #FFFDF8;
+        border: 2px dashed #E5C158;
+        border-radius: 20px;
+        padding: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-card"><span class="badge">Kirin Craft Selection</span><h1>エクセルリスト生成</h1><p style="color: #555555; font-size: 13px; margin-top: 8px;">ファイルをアップロードするだけで、自動デザイン整形・文字装飾ルール適用・Scope別タブ分割を行います。</p></div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="main-card">
+    <div class="beer-drop">💧</div>
+    <div class="curved-banner">★ JAPAN'S PREMIUM QUALITY ★</div>
+    <span class="badge-gold">KIRIN STYLE FIRST PRESS</span>
+    <h1 class="kirin-title">エクセルリスト生成</h1>
+    <p class="sub-desc">ファイルをアップロードするだけで、デザイン整形・文字装飾ルール適用・Scope別タブ分割を全自動で行います。</p>
+</div>
+""", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("", type=["xlsx", "xls", "csv"])
 
