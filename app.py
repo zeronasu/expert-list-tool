@@ -47,175 +47,227 @@ st.markdown('<div class="main-card"><span class="badge">Professional Tool</span>
 
 uploaded_file = st.file_uploader("", type=["xlsx", "csv"])
 
-def normalize_text(val):
+def clean_str(val):
     if pd.isna(val) or val is None:
         return ""
-    return str(val).strip()
+    s = str(val).strip()
+    if s.lower() in ["nan", "none", "null"]:
+        return ""
+    return s
 
-def find_header_and_map(df_raw):
-    # 最初の20行からヘッダー行と全列インデックスを精密検出
-    for r in range(min(20, len(df_raw))):
-        row_cells = [normalize_text(val).lower() for val in df_raw.iloc[r].tolist()]
-        
-        col_map = {}
-        for c, cell_text in enumerate(row_cells):
-            if not cell_text:
-                continue
-            
-            if "number" in cell_text or cell_text == "no" or cell_text == "no.":
-                col_map["Number"] = c
-            elif "name" in cell_text and "filename" not in cell_text:
-                col_map["Name"] = c
-            elif "title" in cell_text:
-                col_map["Relevant Titles"] = c
-            elif "experience" in cell_text or "screening" in cell_text:
-                col_map["Relevant experience"] = c
-            elif "rate" in cell_text or "hourly" in cell_text or "fee" in cell_text or "price" in cell_text:
-                col_map["Hourly Rate"] = c
-            elif "employment" in cell_text or "history" in cell_text or "career" in cell_text:
-                col_map["Employment History"] = c
-            elif "location" in cell_text or "country" in cell_text or "city" in cell_text:
-                col_map["Location"] = c
-            elif "expert type" in cell_text or "scope" in cell_text or "category" in cell_text or "type" in cell_text:
-                col_map["Scope"] = c
-            elif "status" in cell_text:
-                col_map["Status"] = c
-            elif "identity" in cell_text or "verification" in cell_text or "id" in cell_text:
-                col_map["Identity Verification Status"] = c
-
-        if "Name" in col_map and len(col_map) >= 3:
-            return r, col_map
-            
-    return -1, {}
-
-def process_excel(file):
-    if file.name.endswith('.csv'):
-        df_raw = pd.read_csv(file, header=None)
+def inspect_and_parse(file_bytes, file_name):
+    # CSV / Excel の堅牢な読み込み
+    if file_name.endswith('.csv'):
+        try:
+            df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None, dtype=str)
+        except Exception:
+            df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None, encoding='cp932', dtype=str)
     else:
-        df_raw = pd.read_excel(file, header=None)
+        df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str)
 
-    header_idx, col_map = find_header_and_map(df_raw)
-    
-    if header_idx == -1 or "Name" not in col_map:
-        raise ValueError("ヘッダー項目（Name, Number, Relevant Titles など）が検出できませんでした。ファイル形式を確認してください。")
+    # 1. ヘッダー行の日本語・英語高度自動判定
+    header_row_idx = -1
+    col_map = {}
 
-    title_val = "ThirdBridge"
+    for r in range(min(25, len(df_raw))):
+        row_vals = [clean_str(v).lower() for v in df_raw.iloc[r].tolist()]
+        temp_map = {}
+
+        for c, text in enumerate(row_vals):
+            if not text:
+                continue
+
+            # Scope / Category / Expert Type
+            if any(k in text for k in ["expert type", "scope", "part", "category", "タイプ", "スコープ"]):
+                if "Scope" not in temp_map: temp_map["Scope"] = c
+            # Number / ID
+            elif any(k in text for k in ["number", "no", "no.", "id", "番号", "エキスパート番号"]):
+                if "Number" not in temp_map: temp_map["Number"] = c
+            # Name
+            elif any(k in text for k in ["name", "expert name", "名前", "氏名", "エキスパート名"]) and "file" not in text:
+                if "Name" not in temp_map: temp_map["Name"] = c
+            # Relevant Titles
+            elif any(k in text for k in ["title", "titles", "役職", "タイトル", "要職"]):
+                if "Relevant Titles" not in temp_map: temp_map["Relevant Titles"] = c
+            # Relevant Experience
+            elif any(k in text for k in ["experience", "screening", "経歴要約", "要約", "スクリーニング"]):
+                if "Relevant experience" not in temp_map: temp_map["Relevant experience"] = c
+            # Hourly Rate
+            elif any(k in text for k in ["rate", "hourly", "fee", "price", "cost", "単価", "時給", "料金"]):
+                if "Hourly Rate" not in temp_map: temp_map["Hourly Rate"] = c
+            # Employment History
+            elif any(k in text for k in ["employment", "history", "career", "経歴", "職歴", "職務経歴"]):
+                if "Employment History" not in temp_map: temp_map["Employment History"] = c
+            # Location
+            elif any(k in text for k in ["location", "country", "city", "place", "所在地", "国", "場所"]):
+                if "Location" not in temp_map: temp_map["Location"] = c
+            # Status
+            elif "status" in text or "ステータス" in text:
+                if "Status" not in temp_map: temp_map["Status"] = c
+            # Identity Verification Status
+            elif any(k in text for k in ["identity", "verification", "id verification", "本人確認"]):
+                if "Identity Verification Status" not in temp_map: temp_map["Identity Verification Status"] = c
+
+        if ("Name" in temp_map or "Relevant experience" in temp_map) and len(temp_map) >= 2:
+            header_row_idx = r
+            col_map = temp_map
+            break
+
+    if header_row_idx == -1:
+        header_row_idx = 0
+        col_map = {"Scope": 0, "Number": 1, "Name": 2, "Relevant Titles": 3, "Relevant experience": 4, "Hourly Rate": 5, "Employment History": 6, "Location": 7}
+
     has_id = "Identity Verification Status" in col_map
+
+    # 2. セル内改行で分裂した断片行の自動吸収・結合ロジック
+    parsed_rows = []
     
-    data_rows = []
-    scope_groups = {}
-    
-    for r in range(header_idx + 1, len(df_raw)):
+    for r in range(header_row_idx + 1, len(df_raw)):
         row = df_raw.iloc[r]
         
-        def safe_get(key):
+        def get_field(key):
             if key in col_map:
-                idx = col_map[key]
-                if idx < len(row):
-                    val = row[idx]
-                    if pd.notna(val) and str(val).strip().lower() != "nan":
-                        return val
+                c = col_map[key]
+                if c < len(row):
+                    return clean_str(row[c])
             return ""
 
-        name_val = normalize_text(safe_get("Name"))
-        scope_val = normalize_text(safe_get("Scope"))
-        
-        if not name_val and not scope_val:
+        name = get_field("Name")
+        scope = get_field("Scope")
+        number = get_field("Number")
+        titles = get_field("Relevant Titles")
+        exp = get_field("Relevant experience")
+        rate_raw = get_field("Hourly Rate")
+        emp = get_field("Employment History")
+        loc = get_field("Location")
+        status = get_field("Status")
+        id_ver = get_field("Identity Verification Status")
+
+        # 完全空行はスキップ
+        if not any([name, scope, number, titles, exp, rate_raw, emp, loc]):
             continue
-            
-        if not scope_val:
-            scope_val = "その他"
-            
-        raw_status = normalize_text(safe_get("Status"))
-        is_consulted = (raw_status.lower() == "consulted")
-        
-        number_val = safe_get("Number")
-        titles_val = safe_get("Relevant Titles")
-        exp_val = safe_get("Relevant experience")
-        loc_val = safe_get("Location")
-        
-        # Hourly Rateの解析
-        rate_val = safe_get("Hourly Rate")
-        if isinstance(rate_val, str):
-            match = re.search(r'[\d\.]+', rate_val.replace(',', ''))
-            rate_val = float(match.group(0)) if match else rate_val
-            
-        # Employment Historyの整形
-        emp_raw = safe_get("Employment History")
-        cleaned_emp_lines = []
-        if emp_raw:
-            lines = str(emp_raw).split('\n')
-            for line in lines:
-                l_str = line.strip()
-                if l_str and l_str.lower() != "nan":
-                    cleaned_emp_lines.append(l_str)
-        cleaned_emp = "\n".join(cleaned_emp_lines)
-        
-        formatted_row = [
-            scope_val,
-            number_val,
-            name_val,
-            titles_val,
-            exp_val,
-            rate_val,
-            cleaned_emp,
-            loc_val
-        ]
-        
-        if has_id:
-            raw_id = normalize_text(safe_get("Identity Verification Status"))
-            if "verified" in raw_id.lower() and "not" not in raw_id.lower():
+
+        # 改行分裂行（NameやNumberが無い断片行）を前のエキスパート行へマージ
+        if parsed_rows and not name and not scope and not rate_raw and not number:
+            prev = parsed_rows[-1]
+            if exp:
+                prev["exp"] = (prev["exp"] + "\n" + exp).strip()
+            if titles:
+                prev["titles"] = (prev["titles"] + "\n" + titles).strip()
+            if emp:
+                prev["emp"] = (prev["emp"] + "\n" + emp).strip()
+            continue
+
+        if not scope:
+            scope = "その他"
+
+        is_consulted = (status.lower() == "consulted")
+
+        # Rate値の抽出
+        rate_val = rate_raw
+        if rate_raw:
+            num_match = re.search(r'[\d\.]+', rate_raw.replace(',', ''))
+            if num_match:
+                try:
+                    rate_val = float(num_match.group(0))
+                except ValueError:
+                    rate_val = rate_raw
+
+        # ID Verification Symbol
+        id_sym = ""
+        if has_id and id_ver:
+            if "verified" in id_ver.lower() and "not" not in id_ver.lower():
                 id_sym = "◯"
-            elif "not verified" in raw_id.lower():
+            elif "not verified" in id_ver.lower():
                 id_sym = "×"
             else:
-                id_sym = raw_id
-            formatted_row.append(id_sym)
-            
-        item = {"data": formatted_row, "is_consulted": is_consulted}
-        data_rows.append(item)
-        scope_groups.setdefault(scope_val, []).append(item)
-        
+                id_sym = id_ver
+
+        parsed_rows.append({
+            "scope": scope,
+            "number": number,
+            "name": name,
+            "titles": titles,
+            "exp": exp,
+            "rate": rate_val,
+            "emp": emp,
+            "loc": loc,
+            "id_sym": id_sym,
+            "is_consulted": is_consulted
+        })
+
+    return parsed_rows, has_id
+
+def process_excel(file):
+    file_bytes = file.read()
+    data_items, has_id = inspect_and_parse(file_bytes, file.name)
+
+    if not data_items:
+        raise ValueError("有効なデータ行が見つかりませんでした。ファイルの内容を確認してください。")
+
+    title_val = "ThirdBridge"
+    scope_groups = {}
+
+    formatted_data_list = []
+    for item in data_items:
+        formatted_row = [
+            item["scope"],
+            item["number"],
+            item["name"],
+            item["titles"],
+            item["exp"],
+            item["rate"],
+            item["emp"],
+            item["loc"]
+        ]
+        if has_id:
+            formatted_row.append(item["id_sym"])
+
+        entry = {"data": formatted_row, "is_consulted": item["is_consulted"]}
+        formatted_data_list.append(entry)
+        scope_groups.setdefault(item["scope"], []).append(entry)
+
+    # openpyxl によるExcel構築
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
-    
+
     headers = ["Scope", "Number", "Name", "Relevant Titles", "Relevant experience", "Hourly Rate", "Employment History", "Location"]
     if has_id:
         headers.append("ID Verification")
-    
+
     font_regular = Font(name="Meiryo UI", size=9)
     font_bold = Font(name="Meiryo UI", size=9, bold=True)
-    
+
     thin_border = Border(
         left=Side(style='thin', color='D0D0D0'),
         right=Side(style='thin', color='D0D0D0'),
         top=Side(style='thin', color='D0D0D0'),
         bottom=Side(style='thin', color='D0D0D0')
     )
-    
+
     fill_consulted = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
     fill_header = PatternFill(start_color="EFEFEF", end_color="EFEFEF", fill_type="solid")
     fill_white = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
-    def build_sheet(ws, title, items):
+    def build_sheet(ws, sheet_title, items):
         ws.freeze_panes = "D4" # 3行目・C列まで固定
-        
-        ws["A1"] = title
+
+        ws["A1"] = sheet_title
         ws["A1"].font = font_bold
-        
+
         ws["D1"] = "✅ > screening済み"
         ws["D1"].font = font_bold
-        
+
         ws["D2"] = "黄色セル > コンサル済み"
         ws["D2"].font = font_bold
         ws["D2"].fill = fill_consulted
-        
+
         for col_num, h_text in enumerate(headers, 1):
             cell = ws.cell(row=3, column=col_num, value=h_text)
             cell.font = font_bold
             cell.fill = fill_header
             cell.alignment = Alignment(vertical="top")
-            
+
         for r_idx, item in enumerate(items, 4):
             row_data = item["data"]
             for c_idx, val in enumerate(row_data, 1):
@@ -223,7 +275,7 @@ def process_excel(file):
                 cell.border = thin_border
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
                 cell.font = font_regular
-                
+
                 if item["is_consulted"]:
                     cell.fill = fill_consulted
                 else:
@@ -231,26 +283,28 @@ def process_excel(file):
 
                 col_name = headers[c_idx - 1]
                 cell.value = val
-                
+
                 if col_name == "Hourly Rate" and isinstance(val, (int, float)):
                     cell.number_format = '$#,##0'
                     cell.alignment = Alignment(horizontal="center", vertical="top")
                 elif col_name in ["Number", "Location", "ID Verification"]:
                     cell.alignment = Alignment(horizontal="center", vertical="top")
-                    
+
         col_widths = [22, 10, 16, 38, 60, 14, 55, 10, 14]
         for c_i, w in enumerate(col_widths[:len(headers)], 1):
             ws.column_dimensions[get_column_letter(c_i)].width = w
 
+    # 1. 全員一覧
     ws_all = wb.create_sheet(title="全員一覧")
-    build_sheet(ws_all, title_val, data_rows)
-    
+    build_sheet(ws_all, title_val, formatted_data_list)
+
+    # 2. Scope別シート
     for scope_name, items in scope_groups.items():
         clean_name = re.sub(r'[\\View/*?\[\]]', '', scope_name)[:30]
         if clean_name:
             ws_scope = wb.create_sheet(title=clean_name)
             build_sheet(ws_scope, f"{title_val} ({scope_name})", items)
-            
+
     output = io.BytesIO()
     wb.save(output)
     return output.getvalue()
