@@ -56,7 +56,6 @@ def clean_str(val):
     return s
 
 def sanitize_sheet_name(name):
-    # Excelシート名禁止文字 [: \ / ? * [ ]] を自動でハイフンに変換し31文字内に短縮
     clean = re.sub(r'[:\\/*?\[\]]', '-', str(name)).strip()
     return clean[:30] if clean else "Scope"
 
@@ -104,7 +103,7 @@ def inspect_and_parse(file_bytes, file_name):
             elif any(k in text for k in ["identity", "verification", "id verification", "本人確認"]):
                 if "Identity Verification Status" not in temp_map: temp_map["Identity Verification Status"] = c
 
-        if ("Name" in temp_map or "Relevant experience" in temp_map) and len(temp_map) >= 2:
+        if ("Name" in temp_map or "Relevant experience" in temp_map or "Scope" in temp_map) and len(temp_map) >= 2:
             header_row_idx = r
             col_map = temp_map
             break
@@ -117,6 +116,7 @@ def inspect_and_parse(file_bytes, file_name):
     has_id = "Identity Verification Status" in col_map
 
     parsed_rows = []
+    has_any_name = False
     
     for r in range(header_row_idx + 1, len(df_raw)):
         row = df_raw.iloc[r]
@@ -129,6 +129,9 @@ def inspect_and_parse(file_bytes, file_name):
             return ""
 
         name = get_field("Name")
+        if name:
+            has_any_name = True
+
         scope = get_field("Scope")
         titles = get_field("Relevant Titles")
         exp = get_field("Relevant experience")
@@ -201,11 +204,11 @@ def inspect_and_parse(file_bytes, file_name):
             "is_consulted": is_consulted
         })
 
-    return parsed_rows, has_id
+    return parsed_rows, has_id, has_any_name
 
 def process_excel(file):
     file_bytes = file.read()
-    data_items, has_id = inspect_and_parse(file_bytes, file.name)
+    data_items, has_id, has_any_name = inspect_and_parse(file_bytes, file.name)
 
     if not data_items:
         raise ValueError("有効なデータ行が見つかりませんでした。ファイルの内容を確認してください。")
@@ -213,31 +216,35 @@ def process_excel(file):
     title_val = "ThirdBridge"
     scope_groups = {}
 
+    # ヘッダーリストの動的構築（Nameの有無に応じて判定）
+    headers = ["Scope", "Number"]
+    if has_any_name:
+        headers.append("Name")
+    headers.extend(["Relevant Titles", "Relevant experience", "Hourly Rate", "Employment History", "Location"])
+    if has_id:
+        headers.append("ID Verification")
+
     formatted_data_list = []
     for item in data_items:
-        formatted_row = [
-            item["scope"],
-            item["number"],
-            item["name"],
+        row_vals = [item["scope"], item["number"]]
+        if has_any_name:
+            row_vals.append(item["name"])
+        row_vals.extend([
             item["titles"],
             item["exp"],
             item["rate"],
             item["emp"],
             item["loc"]
-        ]
+        ])
         if has_id:
-            formatted_row.append(item["id_sym"])
+            row_vals.append(item["id_sym"])
 
-        entry = {"data": formatted_row, "is_consulted": item["is_consulted"]}
+        entry = {"data": row_vals, "is_consulted": item["is_consulted"]}
         formatted_data_list.append(entry)
         scope_groups.setdefault(item["scope"], []).append(entry)
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
-
-    headers = ["Scope", "Number", "Name", "Relevant Titles", "Relevant experience", "Hourly Rate", "Employment History", "Location"]
-    if has_id:
-        headers.append("ID Verification")
 
     font_regular = Font(name="Meiryo UI", size=9)
     font_bold = Font(name="Meiryo UI", size=9, bold=True)
@@ -254,7 +261,8 @@ def process_excel(file):
     fill_white = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
     def build_sheet(ws, sheet_title, items):
-        ws.freeze_panes = "D4" # 3行目・C列まで固定
+        # 3行目・固定位置調整
+        ws.freeze_panes = "D4" if has_any_name else "C4"
 
         ws["A1"] = sheet_title
         ws["A1"].font = font_bold
@@ -296,8 +304,15 @@ def process_excel(file):
                     if col_name == "Number" and isinstance(val, float):
                         cell.number_format = '0.0'
 
-        col_widths = [22, 10, 16, 38, 60, 14, 55, 10, 14]
-        for c_i, w in enumerate(col_widths[:len(headers)], 1):
+        # 幅設定
+        width_map = {
+            "Scope": 22, "Number": 10, "Name": 16,
+            "Relevant Titles": 38, "Relevant experience": 60,
+            "Hourly Rate": 14, "Employment History": 55,
+            "Location": 10, "ID Verification": 14
+        }
+        for c_i, h_text in enumerate(headers, 1):
+            w = width_map.get(h_text, 15)
             ws.column_dimensions[get_column_letter(c_i)].width = w
 
     # 1. 全員一覧
