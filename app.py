@@ -69,7 +69,7 @@ def inspect_and_parse(file_bytes, file_name):
     else:
         df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str)
 
-    # 1. ヘッダー検出＆列インデックス判定
+    # 1. ヘッダー行の自動判定
     header_row_idx = -1
     col_map = {}
 
@@ -81,34 +81,22 @@ def inspect_and_parse(file_bytes, file_name):
             if not text:
                 continue
 
-            # Scope
             if any(k in text for k in ["expert type", "scope", "part", "category", "タイプ", "スコープ"]):
                 if "Scope" not in temp_map: temp_map["Scope"] = c
-            # Number ("thirdbridge" などの誤一致を排除し、E列や "number", "no." を優先指定)
-            elif any(k in text for k in ["number", "no", "no.", "id", "番号", "エキスパート番号"]) and "name" not in text and "thirdbridge" not in text:
-                if "Number" not in temp_map: temp_map["Number"] = c
-            # Name
             elif any(k in text for k in ["name", "expert name", "名前", "氏名", "エキスパート名"]) and "filename" not in text and "thirdbridge" not in text:
                 if "Name" not in temp_map: temp_map["Name"] = c
-            # Relevant Titles
             elif any(k in text for k in ["title", "titles", "役職", "タイトル", "要職"]):
                 if "Relevant Titles" not in temp_map: temp_map["Relevant Titles"] = c
-            # Relevant Experience
             elif any(k in text for k in ["experience", "screening", "経歴要約", "要約", "スクリーニング"]):
                 if "Relevant experience" not in temp_map: temp_map["Relevant experience"] = c
-            # Hourly Rate
             elif any(k in text for k in ["rate", "hourly", "fee", "price", "cost", "単価", "時給", "料金"]):
                 if "Hourly Rate" not in temp_map: temp_map["Hourly Rate"] = c
-            # Employment History
             elif any(k in text for k in ["employment", "history", "career", "経歴", "職歴", "職務経歴"]):
                 if "Employment History" not in temp_map: temp_map["Employment History"] = c
-            # Location
             elif any(k in text for k in ["location", "country", "city", "place", "所在地", "国", "場所"]):
                 if "Location" not in temp_map: temp_map["Location"] = c
-            # Status
             elif "status" in text or "ステータス" in text:
                 if "Status" not in temp_map: temp_map["Status"] = c
-            # Identity Verification
             elif any(k in text for k in ["identity", "verification", "id verification", "本人確認"]):
                 if "Identity Verification Status" not in temp_map: temp_map["Identity Verification Status"] = c
 
@@ -119,11 +107,9 @@ def inspect_and_parse(file_bytes, file_name):
 
     if header_row_idx == -1:
         header_row_idx = 0
-        col_map = {"Scope": 0, "Number": 4, "Name": 1, "Relevant Titles": 2, "Relevant experience": 3, "Hourly Rate": 5, "Employment History": 6, "Location": 7}
 
-    # E列 (index 4) が Number 列のデフォルト位置
-    if "Number" not in col_map or col_map.get("Number") == col_map.get("Name"):
-        col_map["Number"] = 4 if len(df_raw.columns) > 4 else 1
+    # 元ファイルのE列（0インデックスの4）を固定でNumber抽出元に指定
+    number_col_idx = 4
 
     has_id = "Identity Verification Status" in col_map
 
@@ -141,7 +127,6 @@ def inspect_and_parse(file_bytes, file_name):
 
         name = get_field("Name")
         scope = get_field("Scope")
-        number = get_field("Number")
         titles = get_field("Relevant Titles")
         exp = get_field("Relevant experience")
         rate_raw = get_field("Hourly Rate")
@@ -150,8 +135,9 @@ def inspect_and_parse(file_bytes, file_name):
         status = get_field("Status")
         id_ver = get_field("Identity Verification Status")
 
-        # Number列に "ThirdBridge" の文字列が紛れ込んだ場合のフィルタリング保護
-        if "thirdbridge" in str(number).lower() or "third bridge" in str(number).lower():
+        # 元ファイルのE列 (index 4) から直接 Number (1.1, 1.2 など) を取得
+        number = clean_str(row[number_col_idx]) if number_col_idx < len(row) else ""
+        if "thirdbridge" in number.lower():
             number = ""
 
         if not any([name, scope, number, titles, exp, rate_raw, emp, loc]):
