@@ -8,105 +8,97 @@ import streamlit as st
 
 st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="📄", layout="wide")
 
-# #355E3B (Hunter Green) を基調とした統一テーマ CSS
+# 指定のカラーコード（背景: #355E3B, ボックス: #FBFDE4, 文字: #895129）を適用したCSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
 
-    /* 背景: #355E3B ディープグリーン・ラグジュアリーグラデーション */
+    /* マットな単色背景: #355E3B */
     .stApp {
-        background: 
-            radial-gradient(circle at 80% 20%, rgba(85, 138, 93, 0.25) 0%, transparent 50%),
-            radial-gradient(circle at 20% 80%, rgba(30, 56, 34, 0.4) 0%, transparent 50%),
-            linear-gradient(135deg, #152618 0%, #224028 40%, #355E3B 80%, #1A311F 100%);
-        background-attachment: fixed;
+        background-color: #355E3B !important;
+        background-image: none !important;
     }
     
-    /* メインカード */
+    /* メインカード: #FBFDE4 */
     .main-card {
-        background: rgba(250, 252, 250, 0.97);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(53, 94, 59, 0.35);
+        background-color: #FBFDE4 !important;
+        border: 2px solid #895129 !important;
         border-radius: 24px;
         padding: 48px 40px;
-        box-shadow: 
-            0 30px 60px rgba(0, 0, 0, 0.5),
-            0 0 40px rgba(53, 94, 59, 0.2);
-        color: #1A1A1A;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        color: #895129 !important;
         text-align: center;
         max-width: 640px;
         margin: 20px auto 30px auto;
         position: relative;
     }
 
-    /* #355E3B 統一バッジ */
+    /* バッジ: #895129 背景 / #FBFDE4 文字 */
     .badge-theme {
-        background: linear-gradient(135deg, #355E3B 0%, #2A4C2F 100%);
-        color: #FFFFFF;
+        background-color: #895129 !important;
+        color: #FBFDE4 !important;
         padding: 7px 22px;
         border-radius: 30px;
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 2.5px;
         text-transform: uppercase;
-        box-shadow: 0 4px 14px rgba(53, 94, 59, 0.35);
         display: inline-block;
         margin-bottom: 18px;
     }
 
-    /* タイトル */
+    /* タイトル: #895129 */
     h1.main-title {
         font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
-        color: #1A311F;
+        color: #895129 !important;
         font-size: 32px;
         font-weight: 900;
         margin: 0 0 16px 0;
         letter-spacing: -0.5px;
+        -webkit-text-fill-color: #895129 !important;
     }
 
-    /* 説明文 */
+    /* 説明文: #895129 */
     p.sub-desc {
-        color: #425846;
+        color: #895129 !important;
         font-size: 13.5px;
         font-weight: 700;
         line-height: 1.65;
         margin-bottom: 0;
     }
 
-    /* #355E3B テーマボタン */
+    /* ボタン: #895129 背景 */
     .stButton > button {
-        background: linear-gradient(135deg, #355E3B 0%, #27472D 100%) !important;
-        color: #FFFFFF !important;
-        border: 1px solid #5A8F62 !important;
+        background-color: #895129 !important;
+        color: #FBFDE4 !important;
+        border: none !important;
         padding: 16px 36px !important;
         border-radius: 50px !important;
         font-family: 'Zen Kaku Gothic New', sans-serif !important;
         font-size: 17px !important;
         font-weight: 900 !important;
         letter-spacing: 1.5px !important;
-        box-shadow: 0 10px 25px rgba(53, 94, 59, 0.45) !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2) !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
     }
 
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 15px 30px rgba(53, 94, 59, 0.6) !important;
-        background: linear-gradient(135deg, #42754A 0%, #355E3B 100%) !important;
+        background-color: #704020 !important;
     }
 
-    /* ファイルアップローダー */
+    /* ファイルアップローダー: #FBFDE4 ボックス化 */
     div[data-testid="stFileUploader"] {
-        background: rgba(250, 252, 250, 0.85);
-        border: 2px dashed rgba(53, 94, 59, 0.4);
+        background-color: #FBFDE4 !important;
+        border: 2px dashed #895129 !important;
         border-radius: 20px;
         padding: 12px;
-        transition: all 0.3s ease;
     }
-    
-    div[data-testid="stFileUploader"]:hover {
-        border-color: #355E3B;
-        background: rgba(250, 252, 250, 1);
+
+    /* アップローダー内部の文字色統一 */
+    div[data-testid="stFileUploader"] * {
+        color: #895129 !important;
     }
 </style>
 """, unsafe_allow_html=True)
