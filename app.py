@@ -136,7 +136,7 @@ def inspect_and_parse(file_bytes, file_name):
         titles = get_field("Relevant Titles")
         exp = get_field("Relevant experience")
         rate_raw = get_field("Hourly Rate")
-        emp = get_field("Employment History")
+        emp_raw = get_field("Employment History")
         loc = get_field("Location")
         status = get_field("Status")
         id_ver = get_field("Identity Verification Status")
@@ -155,7 +155,13 @@ def inspect_and_parse(file_bytes, file_name):
             except ValueError:
                 number_val = raw_num
 
-        if not any([name, scope, raw_num, titles, exp, rate_raw, emp, loc]):
+        # Employment History の空行・無駄な改行コードの完全クレンジング
+        cleaned_emp = ""
+        if emp_raw:
+            emp_lines = [line.strip() for line in re.split(r'[\r\n]+', str(emp_raw)) if line.strip() and line.strip().lower() != "nan"]
+            cleaned_emp = "\n".join(emp_lines)
+
+        if not any([name, scope, raw_num, titles, exp, rate_raw, cleaned_emp, loc]):
             continue
 
         if parsed_rows and not name and not scope and not rate_raw and not raw_num:
@@ -164,8 +170,8 @@ def inspect_and_parse(file_bytes, file_name):
                 prev["exp"] = (prev["exp"] + "\n" + exp).strip()
             if titles:
                 prev["titles"] = (prev["titles"] + "\n" + titles).strip()
-            if emp:
-                prev["emp"] = (prev["emp"] + "\n" + emp).strip()
+            if cleaned_emp:
+                prev["emp"] = (prev["emp"] + "\n" + cleaned_emp).strip()
             continue
 
         if not scope:
@@ -198,7 +204,7 @@ def inspect_and_parse(file_bytes, file_name):
             "titles": titles,
             "exp": exp,
             "rate": rate_val,
-            "emp": emp,
+            "emp": cleaned_emp,
             "loc": loc,
             "id_sym": id_sym,
             "is_consulted": is_consulted
@@ -216,7 +222,6 @@ def process_excel(file):
     title_val = "ThirdBridge"
     scope_groups = {}
 
-    # ヘッダーリストの動的構築（Nameの有無に応じて判定）
     headers = ["Scope", "Number"]
     if has_any_name:
         headers.append("Name")
@@ -261,7 +266,6 @@ def process_excel(file):
     fill_white = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
 
     def build_sheet(ws, sheet_title, items):
-        # 3行目・固定位置調整
         ws.freeze_panes = "D4" if has_any_name else "C4"
 
         ws["A1"] = sheet_title
@@ -304,11 +308,10 @@ def process_excel(file):
                     if col_name == "Number" and isinstance(val, float):
                         cell.number_format = '0.0'
 
-        # 幅設定
         width_map = {
             "Scope": 22, "Number": 10, "Name": 16,
             "Relevant Titles": 38, "Relevant experience": 60,
-            "Hourly Rate": 14, "Employment History": 55,
+            "Hourly Rate": 14, "Employment History": 65,
             "Location": 10, "ID Verification": 14
         }
         for c_i, h_text in enumerate(headers, 1):
