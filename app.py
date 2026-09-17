@@ -45,7 +45,6 @@ st.markdown("""
 
 st.markdown('<div class="main-card"><span class="badge">Professional Tool</span><h1>エクセルリスト生成</h1><p style="color: #665555; font-size: 13px;">ファイルをアップロードするだけで、自動デザイン整形・文字装飾ルール適用・Scope別タブ分割を行います。</p></div>', unsafe_allow_html=True)
 
-# .xlsx, .xls, .csv 全フォーマットを許可
 uploaded_file = st.file_uploader("", type=["xlsx", "xls", "csv"])
 
 def clean_str(val):
@@ -57,7 +56,6 @@ def clean_str(val):
     return s
 
 def inspect_and_parse(file_bytes, file_name):
-    # CSV / XLS / XLSX の柔軟読み込み対応
     if file_name.lower().endswith('.csv'):
         try:
             df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None, dtype=str)
@@ -71,7 +69,7 @@ def inspect_and_parse(file_bytes, file_name):
     else:
         df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=str)
 
-    # 1. ヘッダー行の日本語・英語高度自動判定
+    # 1. ヘッダー検出＆列インデックス判定
     header_row_idx = -1
     col_map = {}
 
@@ -83,24 +81,34 @@ def inspect_and_parse(file_bytes, file_name):
             if not text:
                 continue
 
+            # Scope
             if any(k in text for k in ["expert type", "scope", "part", "category", "タイプ", "スコープ"]):
                 if "Scope" not in temp_map: temp_map["Scope"] = c
-            elif any(k in text for k in ["number", "no", "no.", "id", "番号", "エキスパート番号"]):
+            # Number ("thirdbridge" などの誤一致を排除し、E列や "number", "no." を優先指定)
+            elif any(k in text for k in ["number", "no", "no.", "id", "番号", "エキスパート番号"]) and "name" not in text and "thirdbridge" not in text:
                 if "Number" not in temp_map: temp_map["Number"] = c
-            elif any(k in text for k in ["name", "expert name", "名前", "氏名", "エキスパート名"]) and "file" not in text:
+            # Name
+            elif any(k in text for k in ["name", "expert name", "名前", "氏名", "エキスパート名"]) and "filename" not in text and "thirdbridge" not in text:
                 if "Name" not in temp_map: temp_map["Name"] = c
+            # Relevant Titles
             elif any(k in text for k in ["title", "titles", "役職", "タイトル", "要職"]):
                 if "Relevant Titles" not in temp_map: temp_map["Relevant Titles"] = c
+            # Relevant Experience
             elif any(k in text for k in ["experience", "screening", "経歴要約", "要約", "スクリーニング"]):
                 if "Relevant experience" not in temp_map: temp_map["Relevant experience"] = c
+            # Hourly Rate
             elif any(k in text for k in ["rate", "hourly", "fee", "price", "cost", "単価", "時給", "料金"]):
                 if "Hourly Rate" not in temp_map: temp_map["Hourly Rate"] = c
+            # Employment History
             elif any(k in text for k in ["employment", "history", "career", "経歴", "職歴", "職務経歴"]):
                 if "Employment History" not in temp_map: temp_map["Employment History"] = c
+            # Location
             elif any(k in text for k in ["location", "country", "city", "place", "所在地", "国", "場所"]):
                 if "Location" not in temp_map: temp_map["Location"] = c
+            # Status
             elif "status" in text or "ステータス" in text:
                 if "Status" not in temp_map: temp_map["Status"] = c
+            # Identity Verification
             elif any(k in text for k in ["identity", "verification", "id verification", "本人確認"]):
                 if "Identity Verification Status" not in temp_map: temp_map["Identity Verification Status"] = c
 
@@ -111,11 +119,14 @@ def inspect_and_parse(file_bytes, file_name):
 
     if header_row_idx == -1:
         header_row_idx = 0
-        col_map = {"Scope": 0, "Number": 1, "Name": 2, "Relevant Titles": 3, "Relevant experience": 4, "Hourly Rate": 5, "Employment History": 6, "Location": 7}
+        col_map = {"Scope": 0, "Number": 4, "Name": 1, "Relevant Titles": 2, "Relevant experience": 3, "Hourly Rate": 5, "Employment History": 6, "Location": 7}
+
+    # E列 (index 4) が Number 列のデフォルト位置
+    if "Number" not in col_map or col_map.get("Number") == col_map.get("Name"):
+        col_map["Number"] = 4 if len(df_raw.columns) > 4 else 1
 
     has_id = "Identity Verification Status" in col_map
 
-    # 2. セル内改行で分裂した断片行の自動吸収・結合ロジック
     parsed_rows = []
     
     for r in range(header_row_idx + 1, len(df_raw)):
@@ -139,11 +150,13 @@ def inspect_and_parse(file_bytes, file_name):
         status = get_field("Status")
         id_ver = get_field("Identity Verification Status")
 
-        # 完全空行はスキップ
+        # Number列に "ThirdBridge" の文字列が紛れ込んだ場合のフィルタリング保護
+        if "thirdbridge" in str(number).lower() or "third bridge" in str(number).lower():
+            number = ""
+
         if not any([name, scope, number, titles, exp, rate_raw, emp, loc]):
             continue
 
-        # 改行分裂行（NameやNumberが無い断片行）を前のエキスパート行へマージ
         if parsed_rows and not name and not scope and not rate_raw and not number:
             prev = parsed_rows[-1]
             if exp:
@@ -159,7 +172,6 @@ def inspect_and_parse(file_bytes, file_name):
 
         is_consulted = (status.lower() == "consulted")
 
-        # Rate値の抽出
         rate_val = rate_raw
         if rate_raw:
             num_match = re.search(r'[\d\.]+', rate_raw.replace(',', ''))
@@ -169,7 +181,6 @@ def inspect_and_parse(file_bytes, file_name):
                 except ValueError:
                     rate_val = rate_raw
 
-        # ID Verification Symbol
         id_sym = ""
         if has_id and id_ver:
             if "verified" in id_ver.lower() and "not" not in id_ver.lower():
