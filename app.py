@@ -8,28 +8,30 @@ import streamlit as st
 
 st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="📄", layout="wide")
 
-# シンプル＆スタイリッシュな背景・カードデザイン CSS
+# #355E3B (Hunter Green) を基調とした統一テーマ CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
 
+    /* 背景: #355E3B ディープグリーン・ラグジュアリーグラデーション */
     .stApp {
         background: 
-            radial-gradient(circle at 85% 15%, rgba(229, 193, 88, 0.15) 0%, transparent 45%),
-            radial-gradient(circle at 15% 85%, rgba(184, 134, 11, 0.12) 0%, transparent 50%),
-            linear-gradient(135deg, #0D0A07 0%, #1A120B 35%, #2D1E0E 70%, #110B05 100%);
+            radial-gradient(circle at 80% 20%, rgba(85, 138, 93, 0.25) 0%, transparent 50%),
+            radial-gradient(circle at 20% 80%, rgba(30, 56, 34, 0.4) 0%, transparent 50%),
+            linear-gradient(135deg, #152618 0%, #224028 40%, #355E3B 80%, #1A311F 100%);
         background-attachment: fixed;
     }
     
+    /* メインカード */
     .main-card {
-        background: rgba(255, 253, 248, 0.97);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(212, 175, 55, 0.5);
+        background: rgba(250, 252, 250, 0.97);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(53, 94, 59, 0.35);
         border-radius: 24px;
         padding: 48px 40px;
         box-shadow: 
-            0 30px 60px rgba(0, 0, 0, 0.7),
-            0 0 40px rgba(212, 175, 55, 0.12);
+            0 30px 60px rgba(0, 0, 0, 0.5),
+            0 0 40px rgba(53, 94, 59, 0.2);
         color: #1A1A1A;
         text-align: center;
         max-width: 640px;
@@ -37,61 +39,66 @@ st.markdown("""
         position: relative;
     }
 
-    .badge-gold {
-        background: linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #A6801A 100%);
+    /* #355E3B 統一バッジ */
+    .badge-theme {
+        background: linear-gradient(135deg, #355E3B 0%, #2A4C2F 100%);
         color: #FFFFFF;
-        padding: 6px 20px;
+        padding: 7px 22px;
         border-radius: 30px;
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 2.5px;
         text-transform: uppercase;
-        box-shadow: 0 4px 12px rgba(180, 140, 40, 0.3);
+        box-shadow: 0 4px 14px rgba(53, 94, 59, 0.35);
         display: inline-block;
         margin-bottom: 18px;
     }
 
+    /* タイトル */
     h1.main-title {
         font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
-        color: #1A1A1A;
+        color: #1A311F;
         font-size: 32px;
         font-weight: 900;
         margin: 0 0 16px 0;
         letter-spacing: -0.5px;
     }
 
+    /* 説明文 */
     p.sub-desc {
-        color: #665533;
+        color: #425846;
         font-size: 13.5px;
         font-weight: 700;
         line-height: 1.65;
         margin-bottom: 0;
     }
 
+    /* #355E3B テーマボタン */
     .stButton > button {
-        background: linear-gradient(135deg, #D4AF37 0%, #B8860B 50%, #966F09 100%) !important;
+        background: linear-gradient(135deg, #355E3B 0%, #27472D 100%) !important;
         color: #FFFFFF !important;
-        border: 1px solid #FFE4B5 !important;
+        border: 1px solid #5A8F62 !important;
         padding: 16px 36px !important;
         border-radius: 50px !important;
         font-family: 'Zen Kaku Gothic New', sans-serif !important;
         font-size: 17px !important;
         font-weight: 900 !important;
         letter-spacing: 1.5px !important;
-        box-shadow: 0 10px 25px rgba(184, 134, 11, 0.45) !important;
+        box-shadow: 0 10px 25px rgba(53, 94, 59, 0.45) !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
     }
 
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 15px 30px rgba(184, 134, 11, 0.6) !important;
-        background: linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #B8860B 100%) !important;
+        box-shadow: 0 15px 30px rgba(53, 94, 59, 0.6) !important;
+        background: linear-gradient(135deg, #42754A 0%, #355E3B 100%) !important;
     }
 
+    /* ファイルアップローダー */
     div[data-testid="stFileUploader"] {
-        background: rgba(255, 253, 248, 0.8);
-        border: 2px dashed rgba(212, 175, 55, 0.6);
+        background: rgba(250, 252, 250, 0.85);
+        border: 2px dashed rgba(53, 94, 59, 0.4);
         border-radius: 20px;
         padding: 12px;
         transition: all 0.3s ease;
@@ -99,14 +106,14 @@ st.markdown("""
     
     div[data-testid="stFileUploader"]:hover {
         border-color: #355E3B;
-        background: rgba(255, 253, 248, 1);
+        background: rgba(250, 252, 250, 1);
     }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="main-card">
-    <span class="badge-gold">PROFESSIONAL TOOL</span>
+    <span class="badge-theme">PROFESSIONAL TOOL</span>
     <h1 class="main-title">エクセルリスト生成</h1>
     <p class="sub-desc">ファイルをアップロードするだけで、デザイン整形・文字装飾ルール適用・Scope別タブ分割を全自動で行います。</p>
 </div>
