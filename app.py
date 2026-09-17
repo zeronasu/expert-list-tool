@@ -6,44 +6,62 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import streamlit as st
 
-st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="🍺", layout="wide")
 
-# カスタムCSS（ワインレッド＆クリームデザイン）
+# Kirin Beer テーマのカスタムCSS
 st.markdown("""
 <style>
     .stApp {
-        background: linear-gradient(135deg, #1A0507 0%, #3B0A11 40%, #801220 100%);
+        background: linear-gradient(135deg, #1C1917 0%, #2A1D0E 40%, #4A0E0E 100%);
     }
     .main-card {
-        background-color: rgba(255, 255, 255, 0.96);
-        border-radius: 24px;
-        padding: 40px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-        color: #222222;
+        background: rgba(255, 255, 255, 0.97);
+        border-radius: 20px;
+        padding: 45px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+        color: #1A1A1A;
         text-align: center;
         max-width: 650px;
         margin: 0 auto 30px auto;
+        border: 2px solid #D4AF37;
     }
     .badge {
-        background-color: #801220;
+        background: linear-gradient(90deg, #D4AF37 0%, #AA7C11 100%);
         color: #FFFFFF;
-        padding: 6px 16px;
+        padding: 6px 18px;
         border-radius: 20px;
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 2px;
         text-transform: uppercase;
+        box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3);
     }
     h1 {
-        color: #1A0507;
-        font-size: 28px;
+        color: #8B0000;
+        font-size: 30px;
         font-weight: 900;
-        margin-top: 15px;
+        margin-top: 18px;
+        letter-spacing: -0.5px;
+    }
+    .stButton > button {
+        background: linear-gradient(90deg, #8B0000 0%, #B22222 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        padding: 14px 28px !important;
+        border-radius: 12px !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
+        box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4) !important;
+        transition: all 0.25s ease !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 25px rgba(139, 0, 0, 0.6) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-card"><span class="badge">Professional Tool</span><h1>エクセルリスト生成</h1><p style="color: #665555; font-size: 13px;">ファイルをアップロードするだけで、自動デザイン整形・文字装飾ルール適用・Scope別タブ分割を行います。</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-card"><span class="badge">Kirin Craft Selection</span><h1>エクセルリスト生成</h1><p style="color: #555555; font-size: 13px; margin-top: 8px;">ファイルをアップロードするだけで、自動デザイン整形・文字装飾ルール適用・Scope別タブ分割を行います。</p></div>', unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("", type=["xlsx", "xls", "csv"])
 
@@ -155,7 +173,6 @@ def inspect_and_parse(file_bytes, file_name):
             except ValueError:
                 number_val = raw_num
 
-        # Employment History の空行・無駄な改行コードの完全クレンジング
         cleaned_emp = ""
         if emp_raw:
             emp_lines = [line.strip() for line in re.split(r'[\r\n]+', str(emp_raw)) if line.strip() and line.strip().lower() != "nan"]
