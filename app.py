@@ -52,74 +52,93 @@ def process_excel(file):
     else:
         df_raw = pd.read_excel(file, header=None)
         
-    # ヘッダー行の自動検索
     header_idx = -1
     col_map = {}
     
+    # あいまいヘッダー自動マッチングロジック
     for r in range(min(15, len(df_raw))):
-        row_vals = [str(val).strip().lower() for val in df_raw.iloc[r].tolist()]
+        row_vals = [str(val).replace('\n', ' ').strip().lower() for val in df_raw.iloc[r].tolist()]
         temp_map = {}
-        found = 0
+        
         for c, val in enumerate(row_vals):
-            if val == "name": temp_map["Name"] = c; found += 1
-            elif val in ["expert type", "scope"]: temp_map["Expert Type"] = c; found += 1
-            elif val == "relevant experience": temp_map["Relevant experience"] = c; found += 1
-            elif val == "status": temp_map["Status"] = c; found += 1
-            elif val == "hourly rate": temp_map["Hourly Rate"] = c; found += 1
-            elif val == "number": temp_map["Number"] = c; found += 1
-            elif val == "relevant titles": temp_map["Relevant Titles"] = c; found += 1
-            elif val == "employment history": temp_map["Employment History"] = c; found += 1
-            elif val == "location": temp_map["Location"] = c; found += 1
-            elif "identity verification" in val or "id verification" in val: temp_map["Identity Verification Status"] = c; found += 1
+            if not val or val == "nan": continue
             
-        if found >= 3:
+            if "name" in val and "Name" not in temp_map:
+                temp_map["Name"] = c
+            elif ("expert type" in val or "scope" in val or "type" in val) and "Expert Type" not in temp_map:
+                temp_map["Expert Type"] = c
+            elif ("experience" in val or "screening" in val) and "Relevant experience" not in temp_map:
+                temp_map["Relevant experience"] = c
+            elif "status" in val and "Status" not in temp_map:
+                temp_map["Status"] = c
+            elif ("rate" in val or "hourly" in val or "fee" in val) and "Hourly Rate" not in temp_map:
+                temp_map["Hourly Rate"] = c
+            elif ("number" in val or val == "no" or val == "no.") and "Number" not in temp_map:
+                temp_map["Number"] = c
+            elif "title" in val and "Relevant Titles" not in temp_map:
+                temp_map["Relevant Titles"] = c
+            elif ("employment" in val or "history" in val) and "Employment History" not in temp_map:
+                temp_map["Employment History"] = c
+            elif ("location" in val or "country" in val or "city" in val) and "Location" not in temp_map:
+                temp_map["Location"] = c
+            elif ("identity" in val or "id" in val or "verification" in val) and "Identity Verification Status" not in temp_map:
+                temp_map["Identity Verification Status"] = c
+
+        if "Name" in temp_map and len(temp_map) >= 3:
             header_idx = r
-            col_map = temp_map;
+            col_map = temp_map
             break
             
     if header_idx == -1 or "Name" not in col_map:
-        raise ValueError("ヘッダー項目（Name, Expert Type など）が正しく認識できませんでした。")
+        raise ValueError("ヘッダー項目（Name, Scope など）が検出できませんでした。データ形式を確認してください。")
 
-    # タイトルを一律「ThirdBridge」に固定
     title_val = "ThirdBridge"
     has_id = "Identity Verification Status" in col_map
     
-    # データの抽出と整理
     data_rows = []
     scope_groups = {}
     
     for r in range(header_idx + 1, len(df_raw)):
         row = df_raw.iloc[r]
-        name_val = str(row[col_map["Name"]]).strip() if "Name" in col_map and pd.notna(row[col_map["Name"]]) else ""
-        scope_val = str(row[col_map["Expert Type"]]).strip() if "Expert Type" in col_map and pd.notna(row[col_map["Expert Type"]]) else ""
+        
+        def get_val(key):
+            if key in col_map:
+                c_idx = col_map[key]
+                val = row[c_idx]
+                if pd.notna(val) and str(val).strip().lower() != "nan":
+                    return row[c_idx]
+            return ""
+
+        name_val = str(get_val("Name")).strip()
+        scope_val = str(get_val("Expert Type")).strip()
         
         if not name_val and not scope_val:
             continue
-        if not scope_val or scope_val.lower() == "nan":
+        if not scope_val:
             scope_val = "その他"
             
-        raw_status = str(row[col_map["Status"]]).strip() if "Status" in col_map and pd.notna(row[col_map["Status"]]) else ""
+        raw_status = str(get_val("Status")).strip()
         is_consulted = (raw_status.lower() == "consulted")
         
-        number_val = row[col_map["Number"]] if "Number" in col_map and pd.notna(row[col_map["Number"]]) else ""
-        titles_val = row[col_map["Relevant Titles"]] if "Relevant Titles" in col_map and pd.notna(row[col_map["Relevant Titles"]]) else ""
-        exp_val = row[col_map["Relevant experience"]] if "Relevant experience" in col_map and pd.notna(row[col_map["Relevant experience"]]) else ""
-        loc_val = row[col_map["Location"]] if "Location" in col_map and pd.notna(row[col_map["Location"]]) else ""
+        number_val = get_val("Number")
+        titles_val = get_val("Relevant Titles")
+        exp_val = get_val("Relevant experience")
+        loc_val = get_val("Location")
         
-        # Rate
-        rate_val = row[col_map["Hourly Rate"]] if "Hourly Rate" in col_map and pd.notna(row[col_map["Hourly Rate"]]) else ""
+        # Rate処理
+        rate_val = get_val("Hourly Rate")
         if isinstance(rate_val, str):
             match = re.search(r'[\d\.]+', rate_val)
             rate_val = float(match.group(0)) if match else rate_val
             
-        # Employment History
-        emp_val = str(row[col_map["Employment History"]]) if "Employment History" in col_map and pd.notna(row[col_map["Employment History"]]) else ""
-        cleaned_emp = "\n".join([line.strip() for line in emp_val.split("\n") if line.strip()])
+        # Employment History処理
+        emp_val = str(get_val("Employment History"))
+        cleaned_emp = "\n".join([line.strip() for line in emp_val.split("\n") if line.strip() and line.strip().lower() != "nan"])
         
         formatted_row = [scope_val, number_val, name_val, titles_val, exp_val, rate_val, cleaned_emp, loc_val]
         
         if has_id:
-            raw_id = str(row[col_map["Identity Verification Status"]]).strip()
+            raw_id = str(get_val("Identity Verification Status")).strip()
             if "verified" in raw_id.lower() and "not" not in raw_id.lower(): id_sym = "◯"
             elif "not verified" in raw_id.lower(): id_sym = "×"
             else: id_sym = raw_id
@@ -129,15 +148,15 @@ def process_excel(file):
         data_rows.append(item)
         scope_groups.setdefault(scope_val, []).append(item)
         
-    # openpyxl によるブック生成と書式設定
+    # openpyxl によるブック生成
     wb = openpyxl.Workbook()
-    wb.remove(wb.active) # デフォルトシート削除
+    wb.remove(wb.active)
     
     headers = ["Scope", "Number", "Name", "Relevant Titles", "Relevant experience", "Hourly Rate", "Employment History", "Location"]
     if has_id: headers.append("ID Verification")
     
     def build_sheet(ws, title, items):
-        ws.freeze_panes = "D4" # 3行目・C列まで固定
+        ws.freeze_panes = "D4" # 3行目・C列固定
         
         # タイトル & 凡例
         ws["A1"] = title; ws["A1"].font = Font(name="Meiryo UI", size=9, bold=True)
@@ -152,7 +171,6 @@ def process_excel(file):
             cell.fill = PatternFill(start_color="EFEFEF", end_color="EFEFEF", fill_type="solid")
             cell.alignment = Alignment(vertical="top")
             
-        # データ行
         thin_border = Border(
             left=Side(style='thin', color='D0D0D0'),
             right=Side(style='thin', color='D0D0D0'),
@@ -178,7 +196,7 @@ def process_excel(file):
                 if item["is_consulted"]:
                     cell.fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
                     
-        # 列幅設定
+        # 列幅調整
         col_widths = [22, 8, 14, 38, 60, 12, 50, 9, 12]
         for c_i, w in enumerate(col_widths[:len(headers)], 1):
             ws.column_dimensions[get_column_letter(c_i)].width = w
