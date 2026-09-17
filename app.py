@@ -6,35 +6,30 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import streamlit as st
 
-st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="🍺", layout="wide")
+st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="📄", layout="wide")
 
-# スタイリッシュ＆ラグジュアリーな Kirin Ichiban テーマの背景デザイン CSS
+# シンプル＆スタイリッシュな背景・カードデザイン CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap');
 
-    /* 琥珀（アンバー）と黄金のグラデーション＆バックグラウンドデザイン */
     .stApp {
         background: 
-            radial-gradient(circle at 85% 15%, rgba(229, 193, 88, 0.18) 0%, transparent 45%),
-            radial-gradient(circle at 15% 85%, rgba(184, 134, 11, 0.15) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(139, 0, 0, 0.08) 0%, transparent 65%),
+            radial-gradient(circle at 85% 15%, rgba(229, 193, 88, 0.15) 0%, transparent 45%),
+            radial-gradient(circle at 15% 85%, rgba(184, 134, 11, 0.12) 0%, transparent 50%),
             linear-gradient(135deg, #0D0A07 0%, #1A120B 35%, #2D1E0E 70%, #110B05 100%);
         background-attachment: fixed;
     }
     
-    /* カードコンテナデザイン */
     .main-card {
         background: rgba(255, 253, 248, 0.97);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(212, 175, 55, 0.6);
-        outline: 4px double rgba(212, 175, 55, 0.4);
-        outline-offset: -8px;
+        border: 1px solid rgba(212, 175, 55, 0.5);
         border-radius: 24px;
-        padding: 50px 40px;
+        padding: 48px 40px;
         box-shadow: 
             0 30px 60px rgba(0, 0, 0, 0.7),
-            0 0 40px rgba(212, 175, 55, 0.15);
+            0 0 40px rgba(212, 175, 55, 0.12);
         color: #1A1A1A;
         text-align: center;
         max-width: 640px;
@@ -42,51 +37,27 @@ st.markdown("""
         position: relative;
     }
 
-    /* ビールの一滴（ゴールドドロップ）アイコン */
-    .beer-drop {
-        font-size: 42px;
-        margin-bottom: 8px;
-        display: inline-block;
-        filter: drop-shadow(0 6px 12px rgba(212, 175, 55, 0.5));
-    }
-
-    /* 弧状のスタイルテキスト */
-    .curved-banner {
-        font-family: 'Cinzel', serif;
-        color: #B8860B;
-        font-size: 12px;
-        font-weight: 900;
-        letter-spacing: 4px;
-        text-transform: uppercase;
-        margin-bottom: 12px;
-    }
-
-    /* タイトル */
-    h1.kirin-title {
-        font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
-        color: #1A1A1A;
-        font-size: 34px;
-        font-weight: 900;
-        margin: 8px 0 16px 0;
-        letter-spacing: -0.5px;
-        background: linear-gradient(180deg, #111111 0%, #333333 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    /* 一番搾り黄金バッジ */
     .badge-gold {
         background: linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #A6801A 100%);
         color: #FFFFFF;
-        padding: 7px 22px;
+        padding: 6px 20px;
         border-radius: 30px;
         font-size: 11px;
         font-weight: 800;
         letter-spacing: 2.5px;
         text-transform: uppercase;
-        box-shadow: 0 4px 12px rgba(180, 140, 40, 0.35);
+        box-shadow: 0 4px 12px rgba(180, 140, 40, 0.3);
         display: inline-block;
-        margin-bottom: 10px;
+        margin-bottom: 18px;
+    }
+
+    h1.main-title {
+        font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+        color: #1A1A1A;
+        font-size: 32px;
+        font-weight: 900;
+        margin: 0 0 16px 0;
+        letter-spacing: -0.5px;
     }
 
     p.sub-desc {
@@ -97,7 +68,6 @@ st.markdown("""
         margin-bottom: 0;
     }
 
-    /* スタイリッシュボタン */
     .stButton > button {
         background: linear-gradient(135deg, #D4AF37 0%, #B8860B 50%, #966F09 100%) !important;
         color: #FFFFFF !important;
@@ -109,12 +79,12 @@ st.markdown("""
         font-weight: 900 !important;
         letter-spacing: 1.5px !important;
         box-shadow: 0 10px 25px rgba(184, 134, 11, 0.45) !important;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        transition: all 0.3s ease !important;
         width: 100% !important;
     }
 
     .stButton > button:hover {
-        transform: translateY(-3px) scale(1.01) !important;
+        transform: translateY(-2px) !important;
         box-shadow: 0 15px 30px rgba(184, 134, 11, 0.6) !important;
         background: linear-gradient(135deg, #E5C158 0%, #D4AF37 50%, #B8860B 100%) !important;
     }
@@ -136,10 +106,8 @@ st.markdown("""
 
 st.markdown("""
 <div class="main-card">
-    <div class="beer-drop">💧</div>
-    <div class="curved-banner">★ JAPAN'S PREMIUM QUALITY ★</div>
-    <span class="badge-gold">KIRIN STYLE FIRST PRESS</span>
-    <h1 class="kirin-title">エクセルリスト生成</h1>
+    <span class="badge-gold">PROFESSIONAL TOOL</span>
+    <h1 class="main-title">エクセルリスト生成</h1>
     <p class="sub-desc">ファイルをアップロードするだけで、デザイン整形・文字装飾ルール適用・Scope別タブ分割を全自動で行います。</p>
 </div>
 """, unsafe_allow_html=True)
