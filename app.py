@@ -4,8 +4,6 @@ import pandas as pd
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.cell.text import InlineFont
-from openpyxl.text.richtext import TextBlock, CellRichText
 import streamlit as st
 
 st.set_page_config(page_title="エクセルリスト生成ツール", page_icon="⚡", layout="wide")
@@ -178,7 +176,6 @@ def process_excel(file):
         data_rows.append(item)
         scope_groups.setdefault(scope_val, []).append(item)
         
-    # openpyxl ワークブック構築
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     
@@ -188,9 +185,6 @@ def process_excel(file):
     
     font_regular = Font(name="Meiryo UI", size=9)
     font_bold = Font(name="Meiryo UI", size=9, bold=True)
-    
-    inline_regular = InlineFont(rFont="Meiryo UI", sz=9.0)
-    inline_bold_red = InlineFont(rFont="Meiryo UI", sz=9.0, b=True, color="CC0000")
     
     thin_border = Border(
         left=Side(style='thin', color='D0D0D0'),
@@ -206,7 +200,6 @@ def process_excel(file):
     def build_sheet(ws, title, items):
         ws.freeze_panes = "D4" # 3行目・C列まで固定
         
-        # タイトル行（A1）とステータス凡例（D1, D2）
         ws["A1"] = title
         ws["A1"].font = font_bold
         
@@ -217,20 +210,19 @@ def process_excel(file):
         ws["D2"].font = font_bold
         ws["D2"].fill = fill_consulted
         
-        # ヘッダー行 (3行目)
         for col_num, h_text in enumerate(headers, 1):
             cell = ws.cell(row=3, column=col_num, value=h_text)
             cell.font = font_bold
             cell.fill = fill_header
             cell.alignment = Alignment(vertical="top")
             
-        # データ行 (4行目以降)
         for r_idx, item in enumerate(items, 4):
             row_data = item["data"]
             for c_idx, val in enumerate(row_data, 1):
                 cell = ws.cell(row=r_idx, column=c_idx)
                 cell.border = thin_border
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
+                cell.font = font_regular
                 
                 if item["is_consulted"]:
                     cell.fill = fill_consulted
@@ -238,43 +230,21 @@ def process_excel(file):
                     cell.fill = fill_white
 
                 col_name = headers[c_idx - 1]
+                cell.value = val
                 
                 if col_name == "Hourly Rate" and isinstance(val, (int, float)):
-                    cell.value = val
-                    cell.font = font_regular
                     cell.number_format = '$#,##0'
                     cell.alignment = Alignment(horizontal="center", vertical="top")
                 elif col_name in ["Number", "Location", "ID Verification"]:
-                    cell.value = val
-                    cell.font = font_regular
                     cell.alignment = Alignment(horizontal="center", vertical="top")
-                elif col_name in ["Relevant experience", "Employment History"] and isinstance(val, str) and "Present" in val:
-                    # "Present" を含む行の太字・赤字化（リッチテキスト）
-                    lines = val.split('\n')
-                    rich_blocks = []
-                    for idx, line in enumerate(lines):
-                        if "Present" in line:
-                            rich_blocks.append(TextBlock(inlineFont=inline_bold_red, text=line))
-                        else:
-                            rich_blocks.append(TextBlock(inlineFont=inline_regular, text=line))
-                        if idx < len(lines) - 1:
-                            rich_blocks.append(TextBlock(inlineFont=inline_regular, text='\n'))
                     
-                    cell.value = CellRichText(rich_blocks)
-                else:
-                    cell.value = val
-                    cell.font = font_regular
-                    
-        # 列幅の設定
         col_widths = [22, 10, 16, 38, 60, 14, 55, 10, 14]
         for c_i, w in enumerate(col_widths[:len(headers)], 1):
             ws.column_dimensions[get_column_letter(c_i)].width = w
 
-    # 1. 全員一覧シート
     ws_all = wb.create_sheet(title="全員一覧")
     build_sheet(ws_all, title_val, data_rows)
     
-    # 2. Scope別シート
     for scope_name, items in scope_groups.items():
         clean_name = re.sub(r'[\\View/*?\[\]]', '', scope_name)[:30]
         if clean_name:
